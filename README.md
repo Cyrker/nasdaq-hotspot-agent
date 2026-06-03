@@ -42,8 +42,8 @@ _conf_schema.json    # AstrBot WebUI 配置项
 
 安装方式：
 
-1. 如果 AstrBot 可以访问该 GitHub 私有仓库，在插件安装地址中填写仓库地址。
-2. 如果 AstrBot 无法直接访问私有仓库，把本目录放到 AstrBot 的插件目录后作为本地插件加载。
+1. 在 AstrBot 插件安装地址中填写 GitHub 仓库地址。
+2. 如果 AstrBot 所在环境无法访问 GitHub，把本目录放到 AstrBot 的插件目录后作为本地插件加载。
 
 常用命令：
 
