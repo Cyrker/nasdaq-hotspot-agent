@@ -224,6 +224,27 @@ class NasdaqHotspotReporter(Star):
         sender_id = self._event_sender_id(event) or "未知"
         return f"没有权限执行热点日报命令。请在插件配置 admin_qqs 中添加你的 QQ：{sender_id}"
 
+    def _plugin_version(self) -> str:
+        metadata_path = PLUGIN_ROOT / "metadata.yaml"
+        try:
+            for raw_line in metadata_path.read_text(encoding="utf-8").splitlines():
+                line = raw_line.strip()
+                if line.startswith("version:"):
+                    return line.split(":", 1)[1].strip().strip("'\"")
+        except OSError:
+            return "unknown"
+        return "unknown"
+
+    def _runtime_info_lines(self) -> list[str]:
+        import nasdaq_hotspot_agent.report as report_module
+
+        return [
+            f"plugin_version: {self._plugin_version()}",
+            f"plugin_root: {PLUGIN_ROOT}",
+            f"main_file: {Path(__file__).resolve()}",
+            f"report_module: {Path(report_module.__file__).resolve()}",
+        ]
+
     def _config_path(self) -> Path:
         configured = self._get_str("agent_config_path", "config/watchlist.json")
         path = Path(configured)
@@ -774,6 +795,7 @@ class NasdaqHotspotReporter(Star):
             return
 
         lines = [
+            *self._runtime_info_lines(),
             f"enabled: {self._get_bool('enabled', True)}",
             f"auto_push_enabled: {self._get_bool('auto_push_enabled', False)}",
             f"daily_report_time: {self._get_str('daily_report_time', '06:00')}",
@@ -802,6 +824,15 @@ class NasdaqHotspotReporter(Star):
             f"forward_message_threshold_chars: {self._forward_threshold_chars()}",
         ]
         yield event.plain_result("\n".join(lines))
+
+    @filter.command("mh_version")
+    async def version(self, event: AstrMessageEvent):
+        """查看插件运行时版本和路径。"""
+        if not self._is_admin_event(event):
+            yield event.plain_result(self._permission_denied_message(event))
+            return
+
+        yield event.plain_result("\n".join(self._runtime_info_lines()))
 
     @filter.command("mh_now")
     async def report_now(self, event: AstrMessageEvent):

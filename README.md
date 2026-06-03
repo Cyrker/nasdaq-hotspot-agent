@@ -51,6 +51,7 @@ _conf_schema.json    # AstrBot WebUI 配置项
 /mh_bind_group       绑定当前 QQ 群为日报接收群
 /mh_unbind_group     移除当前 QQ 群
 /mh_status           查看插件状态
+/mh_version          查看插件运行时版本和路径
 /mh_now              立即生成日报并发回当前会话
 /mh_push_now         立即生成日报并推送到已绑定 QQ 群
 ```
