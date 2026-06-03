@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-from ..config import AiConfig
+from typing import TYPE_CHECKING
+
 from .base import ReportRefiner
 from .openai_compatible import OpenAICompatibleRefiner
 
+if TYPE_CHECKING:
+    from ..config import AiConfig
 
-def create_refiner(config: AiConfig) -> ReportRefiner | None:
+
+def create_refiner(config: "AiConfig") -> ReportRefiner | None:
     if not config.enabled:
         return None
 

@@ -80,6 +80,10 @@ AstrBot WebUI 配置 > config/watchlist.json 默认配置
 
 如果 `ai_enabled=true` 但 API Key 或服务不可用，插件会回退到模板摘要，并在日报顶部显示 AI 失败原因。
 
+加载故障处理：
+
+如果 AstrBot 报 `cannot import name 'AiConfig' from 'nasdaq_hotspot_agent.config'`，通常是插件更新不完整或旧文件缓存。请先在 AstrBot 插件页重载；如果仍失败，删除 `/AstrBot/data/plugins/nasdaq_hotspot_agent` 后用公开仓库地址重新安装。
+
 ## AI 提供商配置
 
 默认配置位于 `config/watchlist.json`：

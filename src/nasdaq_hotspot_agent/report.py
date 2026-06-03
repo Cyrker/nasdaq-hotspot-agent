@@ -198,10 +198,11 @@ def build_ai_status(
     ai_summary: str | None,
     ai_error: str | None,
 ) -> str:
-    if not config.ai.enabled:
+    ai_config = getattr(config, "ai", None)
+    if not ai_config or not ai_config.enabled:
         return "未启用，使用模板摘要"
     if ai_summary:
-        return f"已启用，provider={config.ai.provider}, model={config.ai.model}"
+        return f"已启用，provider={ai_config.provider}, model={ai_config.model}"
     return f"失败，已回退模板摘要：{ai_error or '未知错误'}"
 
 

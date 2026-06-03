@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import suppress
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 import sys
 from typing import Any
@@ -17,10 +17,29 @@ from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import AstrMessageEvent, MessageChain, filter
 from astrbot.api.star import Context, Star
 
-from nasdaq_hotspot_agent.config import AgentConfig, AiConfig, load_config
+from nasdaq_hotspot_agent.config import AgentConfig, load_config
 from nasdaq_hotspot_agent.pipeline import NasdaqHotspotAgent
 from nasdaq_hotspot_agent.providers.mock import MockMarketDataProvider
 from nasdaq_hotspot_agent.timezones import load_timezone
+
+try:
+    from nasdaq_hotspot_agent.config import AiConfig as PackageAiConfig
+except ImportError:
+    PackageAiConfig = None
+
+
+@dataclass(frozen=True)
+class FallbackAiConfig:
+    enabled: bool = False
+    provider: str = "openai_compatible"
+    model: str = "gpt-4.1-mini"
+    base_url: str = "https://api.openai.com/v1"
+    api_key_env: str = "OPENAI_API_KEY"
+    api_key: str = ""
+    temperature: float = 0.2
+    max_tokens: int = 1200
+    timeout_seconds: int = 60
+    report_language: str = "zh-CN"
 
 
 class NasdaqHotspotReporter(Star):
@@ -124,20 +143,30 @@ class NasdaqHotspotReporter(Star):
 
     def _load_agent_config(self) -> AgentConfig:
         base_config = load_config(self._config_path())
-        base_ai = base_config.ai
-        ai_config = AiConfig(
-            enabled=self._get_bool("ai_enabled", base_ai.enabled),
-            provider=self._get_str("ai_provider", base_ai.provider),
-            model=self._get_str("ai_model", base_ai.model),
-            base_url=self._get_str("ai_base_url", base_ai.base_url),
-            api_key_env=self._get_str("ai_api_key_env", base_ai.api_key_env),
-            api_key=self._get_str("ai_api_key", base_ai.api_key),
-            temperature=self._get_float("ai_temperature", base_ai.temperature),
-            max_tokens=self._get_int("ai_max_tokens", base_ai.max_tokens),
-            timeout_seconds=self._get_int("ai_timeout_seconds", base_ai.timeout_seconds),
-            report_language=self._get_str("ai_report_language", base_ai.report_language),
+        base_ai = getattr(base_config, "ai", None) or FallbackAiConfig()
+        ai_config_cls = PackageAiConfig or FallbackAiConfig
+        ai_config = ai_config_cls(
+            enabled=self._get_bool("ai_enabled", self._ai_attr(base_ai, "enabled", False)),
+            provider=self._get_str("ai_provider", self._ai_attr(base_ai, "provider", "openai_compatible")),
+            model=self._get_str("ai_model", self._ai_attr(base_ai, "model", "gpt-4.1-mini")),
+            base_url=self._get_str("ai_base_url", self._ai_attr(base_ai, "base_url", "https://api.openai.com/v1")),
+            api_key_env=self._get_str("ai_api_key_env", self._ai_attr(base_ai, "api_key_env", "OPENAI_API_KEY")),
+            api_key=self._get_str("ai_api_key", self._ai_attr(base_ai, "api_key", "")),
+            temperature=self._get_float("ai_temperature", self._ai_attr(base_ai, "temperature", 0.2)),
+            max_tokens=self._get_int("ai_max_tokens", self._ai_attr(base_ai, "max_tokens", 1200)),
+            timeout_seconds=self._get_int("ai_timeout_seconds", self._ai_attr(base_ai, "timeout_seconds", 60)),
+            report_language=self._get_str("ai_report_language", self._ai_attr(base_ai, "report_language", "zh-CN")),
         )
-        return replace(base_config, ai=ai_config)
+        try:
+            return replace(base_config, ai=ai_config)
+        except (TypeError, ValueError):
+            object.__setattr__(base_config, "ai", ai_config)
+            return base_config
+
+    def _ai_attr(self, base_ai: object, key: str, default: Any) -> Any:
+        if isinstance(base_ai, dict):
+            return base_ai.get(key, default)
+        return getattr(base_ai, key, default)
 
     def _run_agent_sync(self) -> str:
         agent_config = self._load_agent_config()

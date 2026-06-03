@@ -35,12 +35,14 @@ class NasdaqHotspotAgent:
         ai_summary: str | None = None
         ai_error: str | None = None
 
-        try:
-            refiner = create_refiner(self.config.ai)
-            if refiner:
-                ai_summary = refiner.refine(snapshot, stocks, themes)
-        except (AiProviderError, ValueError) as exc:
-            ai_error = str(exc)
+        ai_config = getattr(self.config, "ai", None)
+        if ai_config:
+            try:
+                refiner = create_refiner(ai_config)
+                if refiner:
+                    ai_summary = refiner.refine(snapshot, stocks, themes)
+            except (AiProviderError, ValueError) as exc:
+                ai_error = str(exc)
 
         markdown = generate_markdown_report(
             self.config,

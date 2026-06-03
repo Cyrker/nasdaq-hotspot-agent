@@ -2,19 +2,21 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from ..config import AiConfig
 from ..models import MarketSnapshot, StockScore, ThemeSummary
 from .base import AiProviderError, ReportRefiner
+
+if TYPE_CHECKING:
+    from ..config import AiConfig
 
 
 class OpenAICompatibleRefiner(ReportRefiner):
     """Chat Completions client for OpenAI and compatible providers."""
 
-    def __init__(self, config: AiConfig) -> None:
+    def __init__(self, config: "AiConfig") -> None:
         self.config = config
 
     def refine(
