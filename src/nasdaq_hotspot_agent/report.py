@@ -9,6 +9,8 @@ def generate_markdown_report(
     snapshot: MarketSnapshot,
     stocks: list[StockScore],
     themes: list[ThemeSummary],
+    ai_summary: str | None = None,
+    ai_error: str | None = None,
 ) -> str:
     date_text = snapshot.as_of.strftime("%Y-%m-%d %H:%M %Z")
     lines: list[str] = [
@@ -16,10 +18,11 @@ def generate_markdown_report(
         "",
         f"- 数据截止：{date_text}",
         "- 数据状态：MVP 模拟数据，后续需接入真实行情和新闻源",
+        f"- AI 精炼：{build_ai_status(config, ai_summary, ai_error)}",
         "",
-        "## 一句话总结",
+        "## 精炼摘要",
         "",
-        build_one_line_summary(snapshot, themes),
+        ai_summary or build_one_line_summary(snapshot, themes),
         "",
         "## 大盘背景",
         "",
@@ -113,3 +116,15 @@ def build_one_line_summary(snapshot: MarketSnapshot, themes: list[ThemeSummary])
 def format_pct(value: float) -> str:
     sign = "+" if value > 0 else ""
     return f"{sign}{value:.2f}%"
+
+
+def build_ai_status(
+    config: AgentConfig,
+    ai_summary: str | None,
+    ai_error: str | None,
+) -> str:
+    if not config.ai.enabled:
+        return "未启用，使用模板摘要"
+    if ai_summary:
+        return f"已启用，provider={config.ai.provider}, model={config.ai.model}"
+    return f"失败，已回退模板摘要：{ai_error or '未知错误'}"

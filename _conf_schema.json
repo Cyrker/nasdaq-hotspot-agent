@@ -21,6 +21,63 @@
     "hint": "默认 Asia/Shanghai",
     "default": "Asia/Shanghai"
   },
+  "ai_enabled": {
+    "description": "是否启用 AI 精炼摘要",
+    "type": "bool",
+    "default": false
+  },
+  "ai_provider": {
+    "description": "AI 提供商类型",
+    "type": "string",
+    "hint": "当前支持 openai_compatible，也兼容填写 openai",
+    "default": "openai_compatible"
+  },
+  "ai_model": {
+    "description": "AI 模型名称",
+    "type": "string",
+    "hint": "例如 gpt-4.1-mini，或你的 OpenAI-compatible 服务支持的模型名",
+    "default": "gpt-4.1-mini"
+  },
+  "ai_base_url": {
+    "description": "AI API Base URL",
+    "type": "string",
+    "hint": "OpenAI 默认 https://api.openai.com/v1；兼容服务填写其 /v1 地址",
+    "default": "https://api.openai.com/v1"
+  },
+  "ai_api_key": {
+    "description": "AI API Key",
+    "type": "string",
+    "hint": "可直接填入；留空时读取 ai_api_key_env 指定的环境变量",
+    "default": ""
+  },
+  "ai_api_key_env": {
+    "description": "AI API Key 环境变量名",
+    "type": "string",
+    "hint": "ai_api_key 留空时使用，例如 OPENAI_API_KEY",
+    "default": "OPENAI_API_KEY"
+  },
+  "ai_temperature": {
+    "description": "AI 输出随机性",
+    "type": "string",
+    "hint": "日报建议 0.1-0.3",
+    "default": "0.2"
+  },
+  "ai_max_tokens": {
+    "description": "AI 最大输出 token 数",
+    "type": "int",
+    "default": 1200
+  },
+  "ai_timeout_seconds": {
+    "description": "AI 请求超时秒数",
+    "type": "int",
+    "default": 60
+  },
+  "ai_report_language": {
+    "description": "AI 报告语言",
+    "type": "string",
+    "hint": "默认 zh-CN",
+    "default": "zh-CN"
+  },
   "admin_qqs": {
     "description": "允许执行插件管理命令的 QQ 号",
     "type": "string",

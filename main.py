@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import suppress
+from dataclasses import replace
 from pathlib import Path
 import sys
 from typing import Any
@@ -16,7 +17,7 @@ from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import AstrMessageEvent, MessageChain, filter
 from astrbot.api.star import Context, Star
 
-from nasdaq_hotspot_agent.config import AgentConfig, load_config
+from nasdaq_hotspot_agent.config import AgentConfig, AiConfig, load_config
 from nasdaq_hotspot_agent.pipeline import NasdaqHotspotAgent
 from nasdaq_hotspot_agent.providers.mock import MockMarketDataProvider
 from nasdaq_hotspot_agent.timezones import load_timezone
@@ -41,6 +42,12 @@ class NasdaqHotspotReporter(Star):
     def _get_int(self, key: str, default: int) -> int:
         try:
             return max(1, int(self.config.get(key, default)))
+        except (TypeError, ValueError):
+            return default
+
+    def _get_float(self, key: str, default: float) -> float:
+        try:
+            return float(self.config.get(key, default))
         except (TypeError, ValueError):
             return default
 
@@ -116,7 +123,21 @@ class NasdaqHotspotReporter(Star):
         return path
 
     def _load_agent_config(self) -> AgentConfig:
-        return load_config(self._config_path())
+        base_config = load_config(self._config_path())
+        base_ai = base_config.ai
+        ai_config = AiConfig(
+            enabled=self._get_bool("ai_enabled", base_ai.enabled),
+            provider=self._get_str("ai_provider", base_ai.provider),
+            model=self._get_str("ai_model", base_ai.model),
+            base_url=self._get_str("ai_base_url", base_ai.base_url),
+            api_key_env=self._get_str("ai_api_key_env", base_ai.api_key_env),
+            api_key=self._get_str("ai_api_key", base_ai.api_key),
+            temperature=self._get_float("ai_temperature", base_ai.temperature),
+            max_tokens=self._get_int("ai_max_tokens", base_ai.max_tokens),
+            timeout_seconds=self._get_int("ai_timeout_seconds", base_ai.timeout_seconds),
+            report_language=self._get_str("ai_report_language", base_ai.report_language),
+        )
+        return replace(base_config, ai=ai_config)
 
     def _run_agent_sync(self) -> str:
         agent_config = self._load_agent_config()
@@ -281,6 +302,12 @@ class NasdaqHotspotReporter(Star):
             f"auto_push_enabled: {self._get_bool('auto_push_enabled', False)}",
             f"daily_report_time: {self._get_str('daily_report_time', '06:00')}",
             f"timezone: {self._get_str('timezone', 'Asia/Shanghai')}",
+            f"ai_enabled: {self._get_bool('ai_enabled', False)}",
+            f"ai_provider: {self._get_str('ai_provider', 'openai_compatible')}",
+            f"ai_model: {self._get_str('ai_model', 'gpt-4.1-mini')}",
+            f"ai_base_url: {self._get_str('ai_base_url', 'https://api.openai.com/v1')}",
+            f"ai_api_key: {'已配置' if self._get_str('ai_api_key') else '未配置'}",
+            f"ai_api_key_env: {self._get_str('ai_api_key_env', 'OPENAI_API_KEY')}",
             f"target_groups: {len(self._target_umos())}",
             f"admin_qqs: {len(self._admin_qqs())}",
             f"agent_config_path: {self._config_path()}",

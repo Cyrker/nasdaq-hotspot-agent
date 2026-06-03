@@ -5,6 +5,18 @@
     "max_themes": 6,
     "max_stocks_per_theme": 8
   },
+  "ai": {
+    "enabled": false,
+    "provider": "openai_compatible",
+    "model": "gpt-4.1-mini",
+    "base_url": "https://api.openai.com/v1",
+    "api_key_env": "OPENAI_API_KEY",
+    "api_key": "",
+    "temperature": 0.2,
+    "max_tokens": 1200,
+    "timeout_seconds": 60,
+    "report_language": "zh-CN"
+  },
   "score_weights": {
     "index_weight": 0.34,
     "price_move": 0.26,

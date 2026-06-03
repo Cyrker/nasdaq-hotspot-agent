@@ -63,6 +63,49 @@ _conf_schema.json    # AstrBot WebUI 配置项
 - `daily_report_time`：每日推送时间，默认 `06:00`。
 - `timezone`：默认 `Asia/Shanghai`。
 - `agent_config_path`：热点 Agent 配置文件，默认 `config/watchlist.json`。
+- `ai_enabled`：是否启用 AI 精炼摘要。
+- `ai_provider`：AI 提供商类型，当前支持 `openai_compatible` 和 `openai`。
+- `ai_model`：模型名称，例如 `gpt-4.1-mini` 或兼容服务提供的模型名。
+- `ai_base_url`：API Base URL，OpenAI 默认 `https://api.openai.com/v1`。
+- `ai_api_key`：API Key，可直接在 AstrBot 配置界面填写。
+- `ai_api_key_env`：`ai_api_key` 留空时读取的环境变量名，默认 `OPENAI_API_KEY`。
+
+AI 配置优先级：
+
+```text
+AstrBot WebUI 配置 > config/watchlist.json 默认配置
+```
+
+如果 `ai_enabled=true` 但 API Key 或服务不可用，插件会回退到模板摘要，并在日报顶部显示 AI 失败原因。
+
+## AI 提供商配置
+
+默认配置位于 `config/watchlist.json`：
+
+```json
+{
+  "ai": {
+    "enabled": false,
+    "provider": "openai_compatible",
+    "model": "gpt-4.1-mini",
+    "base_url": "https://api.openai.com/v1",
+    "api_key_env": "OPENAI_API_KEY",
+    "api_key": "",
+    "temperature": 0.2,
+    "max_tokens": 1200,
+    "timeout_seconds": 60,
+    "report_language": "zh-CN"
+  }
+}
+```
+
+本项目使用 Chat Completions 兼容接口：
+
+```text
+POST {ai_base_url}/chat/completions
+```
+
+因此也可以接入其它 OpenAI-compatible 服务，只要它支持相同接口。
 
 ## 目录结构
 
