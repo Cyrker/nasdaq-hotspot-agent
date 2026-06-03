@@ -97,19 +97,17 @@ def generate_markdown_report(
             )
         lines.append("")
 
+    lines.extend(["## 明日关注", ""])
+    for item in build_tomorrow_watch(snapshot, stocks, themes):
+        lines.append(f"- {item}")
+
     lines.extend(
         [
-            "## 明日关注",
-            "",
-            "- 核心权重股是否继续跑赢 S&P 500。",
-            "- 半导体 ETF 是否继续强于 QQQ。",
-            "- AI 算力链的上涨是由单一龙头驱动，还是扩散到设备、存储、网络和软件。",
-            "- 消费科技股如果继续分化，需要区分电商、零售和电动车的独立原因。",
             "",
             "## 风险提示",
             "",
             "- 本报告用于信息整理，不构成投资建议。",
-            "- MVP 当前使用模拟数据，真实使用前必须接入可验证数据源。",
+            "- 行情和新闻源可能存在延迟、摘要截断或 provider 回退，关键判断需要核对原始来源。",
             "- 权重股估值和集中度较高，指数波动可能被少数股票放大。",
         ]
     )
@@ -192,16 +190,16 @@ def generate_plain_text_report(
                 lines.append(item.url)
         lines.append("")
 
+    lines.extend(["明日关注"])
+    for idx, item in enumerate(build_tomorrow_watch(snapshot, stocks, themes), start=1):
+        lines.append(f"{idx}. {item}")
+
     lines.extend(
         [
-            "明日关注",
-            "1. 核心权重股是否继续跑赢 S&P 500。",
-            "2. 半导体 ETF 是否继续强于 QQQ。",
-            "3. AI 算力链上涨是否扩散到设备、存储、网络和软件。",
-            "4. 消费科技股如果继续分化，需要区分电商、零售和电动车的独立原因。",
             "",
             "风险提示",
-            "本报告用于信息整理，不构成投资建议。MVP 当前使用模拟数据，真实使用前必须接入可验证数据源。",
+            "本报告用于信息整理，不构成投资建议。",
+            "行情和新闻源可能存在延迟、摘要截断或 provider 回退，关键判断需要核对原始来源。",
         ]
     )
 
@@ -222,9 +220,174 @@ def build_one_line_summary(snapshot: MarketSnapshot, themes: list[ThemeSummary])
     )
 
 
+def build_tomorrow_watch(
+    snapshot: MarketSnapshot,
+    stocks: list[StockScore],
+    themes: list[ThemeSummary],
+) -> list[str]:
+    items: list[str] = []
+    core_stocks = [stock for stock in stocks if stock.is_core] or stocks
+    core_text = format_stock_tickers(core_stocks, limit=4)
+    ndx = snapshot.index_changes.get(
+        "Nasdaq-100", snapshot.index_changes.get("QQQ", 0.0)
+    )
+    spx = snapshot.index_changes.get("S&P 500", 0.0)
+    relative_gap = ndx - spx
+    if core_text:
+        if relative_gap >= 0.2:
+            items.append(
+                f"Nasdaq-100 今日较 S&P 500 强 {relative_gap:.2f} 个百分点，跟踪 {core_text} 是否继续贡献指数相对收益。"
+            )
+        elif relative_gap <= -0.2:
+            items.append(
+                f"Nasdaq-100 今日较 S&P 500 弱 {abs(relative_gap):.2f} 个百分点，优先看 {core_text} 是否止跌或继续拖累指数。"
+            )
+        else:
+            items.append(
+                f"Nasdaq-100 与 S&P 500 强弱接近，观察 {core_text} 能否重新拉开权重科技股溢价。"
+            )
+
+    if themes:
+        top_theme = themes[0]
+        theme_stocks = format_stock_tickers(top_theme.related_stocks, limit=4)
+        catalyst = short_text(top_theme.catalysts[0], limit=64) if top_theme.catalysts else ""
+        if catalyst:
+            items.append(
+                f"「{top_theme.name}」是最高热度主题，关注 {theme_stocks or '相关成分股'} 的新闻/公告是否继续验证：{catalyst}。"
+            )
+        else:
+            items.append(
+                f"「{top_theme.name}」是最高热度主题，关注 {theme_stocks or '相关成分股'} 是否继续放量。"
+            )
+
+    etf_by_ticker = {etf.ticker: etf for etf in snapshot.etfs}
+    qqq_change = etf_by_ticker.get("QQQ").price_change_pct if "QQQ" in etf_by_ticker else ndx
+    semi_etfs = [
+        etf
+        for ticker in ("SMH", "SOXX")
+        for etf in [etf_by_ticker.get(ticker)]
+        if etf is not None
+    ]
+    if semi_etfs:
+        semi_avg = sum(etf.price_change_pct for etf in semi_etfs) / len(semi_etfs)
+        semi_gap = semi_avg - qqq_change
+        semi_text = "、".join(
+            f"{etf.ticker} {format_pct(etf.price_change_pct)}" for etf in semi_etfs
+        )
+        semi_stocks = [
+            stock
+            for stock in stocks
+            if "半导体" in stock.theme_tags or "AI 算力" in stock.theme_tags
+        ]
+        semi_stock_text = format_stock_tickers(semi_stocks, limit=4)
+        if semi_gap >= 0.5:
+            items.append(
+                f"半导体 ETF（{semi_text}）明显强于 QQQ {format_pct(qqq_change)}，观察 {semi_stock_text or '芯片链'} 是否继续扩散。"
+            )
+        elif semi_gap <= -0.5:
+            items.append(
+                f"半导体 ETF（{semi_text}）弱于 QQQ {format_pct(qqq_change)}，观察 {semi_stock_text or '芯片链'} 是否从热点降温。"
+            )
+        else:
+            items.append(
+                f"半导体 ETF（{semi_text}）与 QQQ {format_pct(qqq_change)} 差距不大，观察芯片链能否走出独立强弱。"
+            )
+
+    movers = sorted(
+        [
+            stock
+            for stock in stocks
+            if abs(stock.price_change_pct) >= 3.0 or stock.volume_ratio >= 1.3
+        ],
+        key=lambda stock: (
+            abs(stock.price_change_pct),
+            stock.volume_ratio,
+            stock.score,
+        ),
+        reverse=True,
+    )
+    gainers = [stock for stock in movers if stock.price_change_pct > 0]
+    decliners = [stock for stock in movers if stock.price_change_pct < 0]
+    if gainers and decliners:
+        items.append(
+            f"高波动个股出现分化：上涨端 {format_stock_tickers(gainers, limit=3)}，下跌端 {format_stock_tickers(decliners, limit=3)}，明日看资金是轮动还是回到单一主线。"
+        )
+    elif gainers:
+        items.append(
+            f"强势个股 {format_stock_tickers(gainers, limit=4)} 是否继续放量，需要区分真实催化和单日价格跳动。"
+        )
+    elif decliners:
+        items.append(
+            f"弱势个股 {format_stock_tickers(decliners, limit=4)} 是否继续拖累主题热度，需要核对是否有基本面事件。"
+        )
+
+    sec_symbols = sorted(
+        {
+            symbol
+            for item in snapshot.news_items
+            if item.source_type == "sec_filing" or item.provider == "sec_edgar"
+            for symbol in item.symbols
+        }
+    )
+    if sec_symbols:
+        items.append(
+            f"SEC 官方文件出现 {format_symbols(sec_symbols, limit=4)}，优先核对 filing 原文对业绩、指引或风险披露的影响。"
+        )
+    else:
+        symbol_counts: dict[str, int] = {}
+        for item in snapshot.news_items:
+            for symbol in item.symbols:
+                symbol_counts[symbol] = symbol_counts.get(symbol, 0) + 1
+        news_text = format_symbol_counts(symbol_counts, limit=4)
+        if news_text:
+            items.append(
+                f"新闻线索最密集的是 {news_text}，优先核对原文是否有实质催化，避免只按标题判断。"
+            )
+
+    if not items:
+        items.append("新闻和行情线索不足，优先等待官方公告、财报日程或主流媒体原文确认。")
+
+    return unique_items(items)[:4]
+
+
 def format_pct(value: float) -> str:
     sign = "+" if value > 0 else ""
     return f"{sign}{value:.2f}%"
+
+
+def format_stock_tickers(stocks: list[StockScore], limit: int = 4) -> str:
+    return "、".join(stock.ticker for stock in stocks[:limit])
+
+
+def format_symbols(symbols: list[str], limit: int = 4) -> str:
+    return "、".join(symbols[:limit])
+
+
+def format_symbol_counts(symbol_counts: dict[str, int], limit: int = 4) -> str:
+    sorted_items = sorted(
+        symbol_counts.items(),
+        key=lambda item: (item[1], item[0]),
+        reverse=True,
+    )[:limit]
+    return "、".join(f"{symbol}({count})" for symbol, count in sorted_items)
+
+
+def short_text(value: str, limit: int = 64) -> str:
+    cleaned = " ".join(value.split())
+    if len(cleaned) <= limit:
+        return cleaned
+    return cleaned[: limit - 1].rstrip() + "…"
+
+
+def unique_items(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    unique: list[str] = []
+    for item in items:
+        if item in seen:
+            continue
+        seen.add(item)
+        unique.append(item)
+    return unique
 
 
 def build_ai_status(
