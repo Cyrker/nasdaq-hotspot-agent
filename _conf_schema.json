@@ -250,6 +250,38 @@
     "type": "int",
     "default": 1800
   },
+  "message_delivery_mode": {
+    "description": "QQ 消息发送模式",
+    "type": "string",
+    "hint": "auto=长消息自动尝试合并转发；plain=始终普通文本分段；forward=始终合并转发。合并转发主要支持 OneBot v11。",
+    "default": "auto"
+  },
+  "forward_message_threshold_chars": {
+    "description": "auto 模式下触发合并转发的字符数",
+    "type": "int",
+    "default": 1800
+  },
+  "forward_node_chars": {
+    "description": "合并转发中每个节点的最大字符数",
+    "type": "int",
+    "default": 1200
+  },
+  "forward_max_nodes_per_message": {
+    "description": "单条合并转发最多包含的节点数",
+    "type": "int",
+    "default": 12
+  },
+  "forward_sender_name": {
+    "description": "合并转发节点显示昵称",
+    "type": "string",
+    "default": "Nasdaq Hotspot Agent"
+  },
+  "forward_sender_uin": {
+    "description": "合并转发节点显示 QQ 号",
+    "type": "string",
+    "hint": "留空时 /mh_now 会尝试使用机器人 QQ；主动推送留空则使用 0。",
+    "default": ""
+  },
   "schedule_check_seconds": {
     "description": "定时任务检查间隔秒数",
     "type": "int",

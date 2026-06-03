@@ -17,6 +17,11 @@ from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import AstrMessageEvent, MessageChain, filter
 from astrbot.api.star import Context, Star
 
+try:
+    import astrbot.api.message_components as Comp
+except ImportError:
+    Comp = None
+
 from nasdaq_hotspot_agent.config import AgentConfig, load_config
 from nasdaq_hotspot_agent.pipeline import NasdaqHotspotAgent
 from nasdaq_hotspot_agent.providers.mock import MockMarketDataProvider
@@ -493,11 +498,62 @@ class NasdaqHotspotReporter(Star):
     def _max_message_chars(self) -> int:
         return self._get_int("max_message_chars", 1800)
 
+    def _message_delivery_mode(self) -> str:
+        mode = self._get_str("message_delivery_mode", "auto").lower()
+        if mode in {"plain", "text"}:
+            return "plain"
+        if mode in {"forward", "merged_forward", "合并转发"}:
+            return "forward"
+        return "auto"
+
+    def _forward_threshold_chars(self) -> int:
+        return self._get_int("forward_message_threshold_chars", 1800)
+
+    def _forward_node_chars(self) -> int:
+        return self._get_int("forward_node_chars", 1200)
+
+    def _forward_max_nodes_per_message(self) -> int:
+        return self._get_int("forward_max_nodes_per_message", 12)
+
+    def _forward_sender_name(self) -> str:
+        return self._get_str("forward_sender_name", "Nasdaq Hotspot Agent")
+
+    def _forward_sender_uin(self, event: AstrMessageEvent | None = None) -> str:
+        configured = self._get_str("forward_sender_uin", "")
+        if configured:
+            return configured
+        if event:
+            with suppress(Exception):
+                self_id = str(event.get_self_id() or "").strip()
+                if self_id:
+                    return self_id
+        return "0"
+
+    def _should_use_forward(self, text: str) -> bool:
+        mode = self._message_delivery_mode()
+        if mode == "plain":
+            return False
+        if mode == "forward":
+            return True
+        return len(text) >= self._forward_threshold_chars()
+
     def _chunk_text(self, text: str) -> list[str]:
-        limit = self._max_message_chars()
+        return self._chunk_text_by_limit(text, self._max_message_chars())
+
+    def _chunk_text_by_limit(self, text: str, limit: int) -> list[str]:
+        limit = max(100, int(limit or 100))
         chunks: list[str] = []
         current = ""
         for line in text.splitlines():
+            if len(line) > limit:
+                if current:
+                    chunks.append(current)
+                    current = ""
+                chunks.extend(
+                    line[start : start + limit]
+                    for start in range(0, len(line), limit)
+                )
+                continue
             candidate = f"{current}\n{line}" if current else line
             if len(candidate) <= limit:
                 current = candidate
@@ -509,11 +565,95 @@ class NasdaqHotspotReporter(Star):
             chunks.append(current)
         return chunks or [text[:limit]]
 
-    async def _send_text_to_target(self, target: str, text: str) -> None:
+    def _build_forward_components(
+        self,
+        text: str,
+        event: AstrMessageEvent | None = None,
+    ) -> list[Any]:
+        node_cls = getattr(Comp, "Node", None)
+        nodes_cls = getattr(Comp, "Nodes", None)
+        plain_cls = getattr(Comp, "Plain", None)
+        if not node_cls or not nodes_cls or not plain_cls:
+            return []
+
+        node_chunks = self._chunk_text_by_limit(text, self._forward_node_chars())
+        if not node_chunks:
+            return []
+
+        sender_name = self._forward_sender_name()
+        sender_uin = self._forward_sender_uin(event)
+        max_nodes = self._forward_max_nodes_per_message()
+        total = len(node_chunks)
+        nodes = []
+        for idx, chunk in enumerate(node_chunks, start=1):
+            header = f"纳指热点日报 {idx}/{total}"
+            content = f"{header}\n\n{chunk}"
+            nodes.append(
+                node_cls(
+                    uin=sender_uin,
+                    name=sender_name,
+                    content=[plain_cls(content)],
+                )
+            )
+
+        components = []
+        for start in range(0, len(nodes), max_nodes):
+            components.append(nodes_cls(nodes[start : start + max_nodes]))
+        return components
+
+    def _build_forward_chains(
+        self,
+        text: str,
+        event: AstrMessageEvent | None = None,
+    ) -> list[MessageChain]:
+        return [
+            MessageChain(chain=[component])
+            for component in self._build_forward_components(text, event)
+        ]
+
+    async def _send_plain_text_to_target(self, target: str, text: str) -> None:
         for chunk in self._chunk_text(text):
             sent = await self.context.send_message(target, MessageChain().message(chunk))
             if sent is False:
                 raise RuntimeError("AstrBot 未找到目标会话")
+            await asyncio.sleep(0.5)
+
+    async def _send_report_to_target(self, target: str, text: str) -> None:
+        if self._should_use_forward(text):
+            try:
+                chains = self._build_forward_chains(text)
+                if not chains:
+                    raise RuntimeError("当前 AstrBot 版本不支持合并转发消息段")
+                for chain in chains:
+                    sent = await self.context.send_message(target, chain)
+                    if sent is False:
+                        raise RuntimeError("AstrBot 未找到目标会话")
+                    await asyncio.sleep(0.5)
+                return
+            except Exception as exc:
+                logger.warning(f"合并转发发送失败，回退普通文本分段: {exc}")
+
+        await self._send_plain_text_to_target(target, text)
+
+    async def _send_report_to_event(
+        self,
+        event: AstrMessageEvent,
+        text: str,
+    ) -> None:
+        if self._should_use_forward(text):
+            try:
+                chains = self._build_forward_chains(text, event)
+                if not chains:
+                    raise RuntimeError("当前 AstrBot 版本不支持合并转发消息段")
+                for chain in chains:
+                    await event.send(chain)
+                    await asyncio.sleep(0.5)
+                return
+            except Exception as exc:
+                logger.warning(f"合并转发发送失败，回退普通文本分段: {exc}")
+
+        for chunk in self._chunk_text(text):
+            await event.send(MessageChain().message(chunk))
             await asyncio.sleep(0.5)
 
     async def _broadcast_report(self, text: str) -> tuple[int, list[str]]:
@@ -525,7 +665,7 @@ class NasdaqHotspotReporter(Star):
         failures: list[str] = []
         for target in targets:
             try:
-                await self._send_text_to_target(target, text)
+                await self._send_report_to_target(target, text)
                 sent_count += 1
             except Exception as exc:
                 failures.append(f"{target}: {exc}")
@@ -658,6 +798,8 @@ class NasdaqHotspotReporter(Star):
             f"news_alpha_vantage_api_key: {'已配置' if self._get_str('news_alpha_vantage_api_key') else '未配置'}",
             f"news_nasdaq_rss_enabled: {self._get_bool('news_nasdaq_rss_enabled', True)}",
             f"sec_edgar_enabled: {self._get_bool('sec_edgar_enabled', True)}",
+            f"message_delivery_mode: {self._message_delivery_mode()}",
+            f"forward_message_threshold_chars: {self._forward_threshold_chars()}",
         ]
         yield event.plain_result("\n".join(lines))
 
@@ -675,8 +817,7 @@ class NasdaqHotspotReporter(Star):
             yield event.plain_result(f"热点日报生成失败: {exc}")
             return
 
-        for chunk in self._chunk_text(report):
-            yield event.plain_result(chunk)
+        await self._send_report_to_event(event, report)
 
     @filter.command("mh_push_now")
     async def push_now(self, event: AstrMessageEvent):
