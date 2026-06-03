@@ -10,8 +10,15 @@ from typing import Any
 
 PLUGIN_ROOT = Path(__file__).resolve().parent
 SRC_DIR = PLUGIN_ROOT / "src"
-if SRC_DIR.exists() and str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
+SRC_DIR_TEXT = str(SRC_DIR)
+sys.path = [path for path in sys.path if path != SRC_DIR_TEXT]
+if SRC_DIR.exists():
+    sys.path.insert(0, SRC_DIR_TEXT)
+for module_name in list(sys.modules):
+    if module_name == "nasdaq_hotspot_agent" or module_name.startswith(
+        "nasdaq_hotspot_agent."
+    ):
+        del sys.modules[module_name]
 
 from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import AstrMessageEvent, MessageChain, filter
@@ -172,6 +179,8 @@ class NasdaqHotspotReporter(Star):
 
     def _normalize_list(self, value: Any) -> list[str]:
         if isinstance(value, str):
+            # Prefer comma-separated config values in AstrBot WebUI, but keep
+            # legacy newline/semicolon parsing so existing installs continue to work.
             raw_items = (
                 value.replace("，", "\n")
                 .replace(",", "\n")
@@ -193,6 +202,9 @@ class NasdaqHotspotReporter(Star):
                 seen.add(item)
         return items
 
+    def _format_config_list(self, values: list[str]) -> str:
+        return ", ".join(self._normalize_list(values))
+
     def _admin_qqs(self) -> set[str]:
         return set(self._normalize_list(self.config.get("admin_qqs", "")))
 
@@ -200,7 +212,7 @@ class NasdaqHotspotReporter(Star):
         return self._normalize_list(self.config.get("target_umos", ""))
 
     def _save_target_umos(self, targets: list[str]) -> None:
-        self.config["target_umos"] = "\n".join(self._normalize_list(targets))
+        self.config["target_umos"] = self._format_config_list(targets)
         self.config.save_config()
 
     def _event_sender_id(self, event: AstrMessageEvent) -> str:
