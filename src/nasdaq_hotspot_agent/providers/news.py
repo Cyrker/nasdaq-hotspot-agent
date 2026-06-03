@@ -70,6 +70,7 @@ class NewsAggregator:
 
         tickers = [item.ticker for item in config.universe]
         articles: list[NewsArticle] = []
+        failures = 0
         for batch in self._batches(tickers, max(1, provider_config.symbol_batch_size)):
             params = {
                 "api_token": api_key,
@@ -79,10 +80,14 @@ class NewsAggregator:
                 "published_after": cutoff.strftime("%Y-%m-%dT%H:%M:%S"),
                 "limit": max(1, provider_config.articles_per_request),
             }
-            data = self._get_json(
-                f"https://api.marketaux.com/v1/news/all?{urlencode(params)}",
-                timeout=config.news.request_timeout_seconds,
-            )
+            try:
+                data = self._get_json(
+                    f"https://api.marketaux.com/v1/news/all?{urlencode(params)}",
+                    timeout=config.news.request_timeout_seconds,
+                )
+            except Exception:
+                failures += 1
+                continue
             for item in data.get("data", []) if isinstance(data, dict) else []:
                 if not isinstance(item, dict):
                     continue
@@ -111,7 +116,10 @@ class NewsAggregator:
                         full_text_available=False,
                     )
                 )
-        return articles, f"Marketaux: {len(articles)} articles"
+        note = f"Marketaux: {len(articles)} articles"
+        if failures:
+            note += f", {failures} batch failures"
+        return articles, note
 
     def _fetch_alpha_vantage(
         self,
@@ -128,21 +136,23 @@ class NewsAggregator:
 
         tickers = [item.ticker for item in config.universe]
         articles: list[NewsArticle] = []
+        failures = 0
         for batch in self._batches(tickers, max(1, provider_config.ticker_batch_size)):
             params = {
                 "function": "NEWS_SENTIMENT",
                 "tickers": ",".join(batch),
-                "time_from": cutoff.strftime("%Y%m%dT%H%M"),
                 "sort": "LATEST",
                 "limit": max(1, provider_config.limit_per_request),
                 "apikey": api_key,
             }
-            if provider_config.topics:
-                params["topics"] = ",".join(provider_config.topics)
-            data = self._get_json(
-                f"https://www.alphavantage.co/query?{urlencode(params)}",
-                timeout=config.news.request_timeout_seconds,
-            )
+            try:
+                data = self._get_json(
+                    f"https://www.alphavantage.co/query?{urlencode(params)}",
+                    timeout=config.news.request_timeout_seconds,
+                )
+            except Exception:
+                failures += 1
+                continue
             for item in data.get("feed", []) if isinstance(data, dict) else []:
                 if not isinstance(item, dict):
                     continue
@@ -172,7 +182,58 @@ class NewsAggregator:
                         full_text_available=False,
                     )
                 )
-        return articles, f"Alpha Vantage: {len(articles)} articles"
+        for topic in provider_config.topics or []:
+            params = {
+                "function": "NEWS_SENTIMENT",
+                "topics": topic,
+                "sort": "LATEST",
+                "limit": max(1, provider_config.limit_per_request),
+                "apikey": api_key,
+            }
+            try:
+                data = self._get_json(
+                    f"https://www.alphavantage.co/query?{urlencode(params)}",
+                    timeout=config.news.request_timeout_seconds,
+                )
+            except Exception:
+                failures += 1
+                continue
+            for item in data.get("feed", []) if isinstance(data, dict) else []:
+                if not isinstance(item, dict):
+                    continue
+                published_at = self._parse_alpha_time(item.get("time_published"))
+                if published_at and published_at < cutoff:
+                    continue
+                symbols = []
+                for ticker_info in item.get("ticker_sentiment", []) or []:
+                    symbol = str(ticker_info.get("ticker") or "").upper().strip()
+                    if symbol:
+                        symbols.append(symbol)
+                topics = [
+                    str(topic_item.get("topic") or "").strip()
+                    for topic_item in item.get("topics", []) or []
+                    if isinstance(topic_item, dict) and topic_item.get("topic")
+                ]
+                articles.append(
+                    NewsArticle(
+                        provider="alpha_vantage",
+                        title=self._clean_text(item.get("title")),
+                        summary=self._clean_text(item.get("summary")),
+                        url=str(item.get("url") or ""),
+                        source=str(item.get("source") or "Alpha Vantage"),
+                        published_at=published_at,
+                        symbols=self._unique(symbols),
+                        topics=self._unique(topics),
+                        sentiment=self._as_float(item.get("overall_sentiment_score")),
+                        source_type="news_summary",
+                        confidence="medium",
+                        full_text_available=False,
+                    )
+                )
+        note = f"Alpha Vantage: {len(articles)} articles"
+        if failures:
+            note += f", {failures} request failures"
+        return articles, note
 
     def _fetch_nasdaq_rss(
         self,
