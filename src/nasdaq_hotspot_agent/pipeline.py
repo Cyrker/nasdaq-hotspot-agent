@@ -7,7 +7,7 @@ from .llm.base import AiProviderError
 from .llm.factory import create_refiner
 from .models import MarketSnapshot, StockScore, ThemeSummary
 from .providers.base import MarketDataProvider
-from .report import generate_markdown_report
+from .report import generate_markdown_report, generate_plain_text_report
 from .scoring import score_stocks
 from .themes import summarize_themes
 
@@ -18,6 +18,7 @@ class AgentRunResult:
     stocks: list[StockScore]
     themes: list[ThemeSummary]
     markdown: str
+    plain_text: str
     ai_summary: str | None = None
     ai_error: str | None = None
 
@@ -49,11 +50,20 @@ class NasdaqHotspotAgent:
             ai_summary=ai_summary,
             ai_error=ai_error,
         )
+        plain_text = generate_plain_text_report(
+            self.config,
+            snapshot,
+            stocks,
+            themes,
+            ai_summary=ai_summary,
+            ai_error=ai_error,
+        )
         return AgentRunResult(
             snapshot=snapshot,
             stocks=stocks,
             themes=themes,
             markdown=markdown,
+            plain_text=plain_text,
             ai_summary=ai_summary,
             ai_error=ai_error,
         )

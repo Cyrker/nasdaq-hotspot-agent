@@ -55,6 +55,8 @@ _conf_schema.json    # AstrBot WebUI 配置项
 /mh_push_now         立即生成日报并推送到已绑定 QQ 群
 ```
 
+QQ 消息会使用纯文本模板：不发送 Markdown 表格、标题符号、反引号或富文本标记。插件仍会把完整 Markdown 版本保存到 `latest_report_path`，方便归档或后续发布到其它支持 Markdown 的渠道。
+
 关键配置：
 
 - `admin_qqs`：允许执行管理命令的 QQ 号。

@@ -149,7 +149,7 @@ class NasdaqHotspotReporter(Star):
         output_path = self._output_path()
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(result.markdown, encoding="utf-8")
-        return result.markdown
+        return result.plain_text
 
     async def _generate_report(self) -> str:
         return await asyncio.to_thread(self._run_agent_sync)
