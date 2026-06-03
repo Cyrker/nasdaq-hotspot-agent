@@ -26,7 +26,7 @@ class NewsAggregator:
     def fetch(self, config: AgentConfig) -> NewsFetchResult:
         news_config = getattr(config, "news", None)
         if not news_config or not news_config.enabled:
-            return NewsFetchResult([], ["新闻源未启用，使用行情和 mock 催化。"])
+            return NewsFetchResult([], ["新闻源未启用，使用行情和本地默认催化。"])
 
         cutoff = datetime.now(UTC) - timedelta(hours=news_config.lookback_hours)
         articles: list[NewsArticle] = []

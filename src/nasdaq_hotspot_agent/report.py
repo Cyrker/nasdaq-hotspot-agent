@@ -17,7 +17,7 @@ def generate_markdown_report(
         f"# {config.title}",
         "",
         f"- 数据截止：{date_text}",
-        "- 数据状态：行情按 provider 配置拉取，失败回退 mock；新闻/公告按配置实时拉取",
+        f"- 数据状态：{build_data_status(snapshot)}",
         f"- AI 精炼：{build_ai_status(config, ai_summary, ai_error)}",
         "",
         "## 精炼摘要",
@@ -128,7 +128,7 @@ def generate_plain_text_report(
         config.title,
         "",
         f"数据截止：{date_text}",
-        "数据状态：行情按 provider 配置拉取，失败回退 mock；新闻/公告按配置实时拉取",
+        f"数据状态：{build_data_status(snapshot)}",
         f"AI 精炼：{build_ai_status(config, ai_summary, ai_error)}",
         "",
         "精炼摘要",
@@ -218,6 +218,73 @@ def build_one_line_summary(snapshot: MarketSnapshot, themes: list[ThemeSummary])
         f"Nasdaq-100 今日{format_pct(ndx)}，{relative} S&P 500，"
         f"热点集中在{top_names}。"
     )
+
+
+def build_data_status(snapshot: MarketSnapshot) -> str:
+    notes = list(snapshot.provider_notes)
+    stooq_notes = [note for note in notes if note.startswith("Stooq market data:")]
+    news_notes = [
+        note
+        for note in notes
+        if note.startswith(("Marketaux:", "Alpha Vantage:", "Nasdaq RSS:", "SEC EDGAR:"))
+    ]
+
+    market_status = "行情：当前 provider 未返回外部行情状态"
+    if stooq_notes:
+        update_note = next(
+            (note for note in stooq_notes if "updated" in note),
+            "",
+        )
+        skipped_note = next(
+            (note for note in stooq_notes if "skipped" in note),
+            "",
+        )
+        fallback_note = next(
+            (note for note in stooq_notes if "fell back" in note),
+            "",
+        )
+        if skipped_note:
+            market_status = "行情：Stooq 未配置 apikey，已回退样例行情"
+        elif update_note:
+            stock_count, etf_count = parse_stooq_update_counts(update_note)
+            if stock_count == 0 and etf_count == 0:
+                market_status = "行情：Stooq 未拉到有效日线，已回退样例行情"
+            elif fallback_note:
+                market_status = (
+                    f"行情：Stooq 已更新 {stock_count} 只股票、{etf_count} 个 ETF，"
+                    "未更新标的回退样例行情"
+                )
+            else:
+                market_status = (
+                    f"行情：Stooq 已更新 {stock_count} 只股票、{etf_count} 个 ETF"
+                )
+
+    if not news_notes:
+        return f"{market_status}；新闻/公告：未返回外部源状态"
+
+    active_news = [
+        note
+        for note in news_notes
+        if "disabled" not in note
+        and "skipped" not in note
+        and "failed" not in note
+    ]
+    if active_news:
+        return f"{market_status}；新闻/公告：已拉取外部源"
+    return f"{market_status}；新闻/公告：外部源未启用或未配置"
+
+
+def parse_stooq_update_counts(note: str) -> tuple[int, int]:
+    parts = note.split(":", 1)[-1]
+    numbers: list[int] = []
+    for token in parts.replace(",", " ").split():
+        try:
+            numbers.append(int(token))
+        except ValueError:
+            continue
+    stock_count = numbers[0] if len(numbers) >= 1 else 0
+    etf_count = numbers[1] if len(numbers) >= 2 else 0
+    return stock_count, etf_count
 
 
 def build_tomorrow_watch(

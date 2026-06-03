@@ -26,13 +26,14 @@ class StooqMarketDataProvider(MarketDataProvider):
             getattr(stooq_config, "api_key", ""),
             getattr(stooq_config, "api_key_env", "STOOQ_API_KEY"),
         )
+        api_key_env = getattr(stooq_config, "api_key_env", "STOOQ_API_KEY")
         timeout = int(getattr(stooq_config, "timeout_seconds", 8) or 8)
         if not api_key:
             return replace(
                 snapshot,
                 provider_notes=[
                     *snapshot.provider_notes,
-                    "Stooq market data: skipped, missing STOOQ_API_KEY",
+                    f"Stooq market data: skipped, missing {api_key_env}",
                 ],
             )
         stock_notes: list[str] = []
@@ -58,7 +59,11 @@ class StooqMarketDataProvider(MarketDataProvider):
         notes = [
             f"Stooq market data: {len(stock_notes)} stocks updated, {len(etf_notes)} ETFs updated"
         ]
-        if len(stock_notes) < len(stocks):
+        if not stock_notes and not etf_notes:
+            notes.append(
+                "Stooq market data: all symbols fell back to mock data; check apikey, network, or whether only the apikey value was configured"
+            )
+        elif len(stock_notes) < len(stocks) or len(etf_notes) < len(etfs):
             notes.append("Stooq market data: some symbols fell back to mock data")
 
         return replace(

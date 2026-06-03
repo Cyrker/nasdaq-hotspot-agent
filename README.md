@@ -57,6 +57,8 @@ _conf_schema.json    # AstrBot WebUI 配置项
 
 QQ 消息会使用纯文本模板：不发送 Markdown 表格、标题符号、反引号或富文本标记。长消息默认会在支持 OneBot v11 的 QQ 适配器上尝试用“合并转发”发送；不支持时自动回退普通文本分段。插件仍会把完整 Markdown 版本保存到 `latest_report_path`，方便归档或后续发布到其它支持 Markdown 的渠道。
 
+判断本次是否使用真实行情，看日报顶部的“数据状态”和“数据源状态”。如果显示 `Stooq 已更新 ...`，说明涨跌幅和成交量已经来自 Stooq；如果显示 `Stooq 未配置 apikey` 或 `0 stocks updated`，则行情已回退样例数据，需要检查 `market_data_provider`、`market_data_stooq_api_key` 和 AstrBot 插件是否已重载。
+
 关键配置：
 
 - `admin_qqs`：允许执行管理命令的 QQ 号。
