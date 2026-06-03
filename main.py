@@ -30,17 +30,21 @@ except ImportError:
 try:
     from nasdaq_hotspot_agent.config import (
         AlphaVantageNewsConfig as PackageAlphaVantageNewsConfig,
+        MarketDataConfig as PackageMarketDataConfig,
         MarketauxConfig as PackageMarketauxConfig,
         NasdaqRssConfig as PackageNasdaqRssConfig,
         NewsConfig as PackageNewsConfig,
         SecEdgarConfig as PackageSecEdgarConfig,
+        StooqConfig as PackageStooqConfig,
     )
 except ImportError:
     PackageAlphaVantageNewsConfig = None
+    PackageMarketDataConfig = None
     PackageMarketauxConfig = None
     PackageNasdaqRssConfig = None
     PackageNewsConfig = None
     PackageSecEdgarConfig = None
+    PackageStooqConfig = None
 
 try:
     from nasdaq_hotspot_agent.providers.factory import create_market_data_provider
@@ -110,6 +114,18 @@ class FallbackNewsConfig:
     )
     nasdaq_rss: FallbackNasdaqRssConfig = field(default_factory=FallbackNasdaqRssConfig)
     sec_edgar: FallbackSecEdgarConfig = field(default_factory=FallbackSecEdgarConfig)
+
+
+@dataclass(frozen=True)
+class FallbackStooqConfig:
+    api_key_env: str = "STOOQ_API_KEY"
+    api_key: str = ""
+    timeout_seconds: int = 8
+
+
+@dataclass(frozen=True)
+class FallbackMarketDataConfig:
+    stooq: FallbackStooqConfig = field(default_factory=FallbackStooqConfig)
 
 
 class NasdaqHotspotReporter(Star):
@@ -233,11 +249,20 @@ class NasdaqHotspotReporter(Star):
             timeout_seconds=self._get_int("ai_timeout_seconds", self._ai_attr(base_ai, "timeout_seconds", 60)),
             report_language=self._get_str("ai_report_language", self._ai_attr(base_ai, "report_language", "zh-CN")),
         )
+        market_data_config = self._build_market_data_config(
+            getattr(base_config, "market_data", None)
+        )
         news_config = self._build_news_config(getattr(base_config, "news", None))
         try:
-            return replace(base_config, ai=ai_config, news=news_config)
+            return replace(
+                base_config,
+                ai=ai_config,
+                market_data=market_data_config,
+                news=news_config,
+            )
         except (TypeError, ValueError):
             object.__setattr__(base_config, "ai", ai_config)
+            object.__setattr__(base_config, "market_data", market_data_config)
             object.__setattr__(base_config, "news", news_config)
             return base_config
 
@@ -245,6 +270,27 @@ class NasdaqHotspotReporter(Star):
         if isinstance(base_ai, dict):
             return base_ai.get(key, default)
         return getattr(base_ai, key, default)
+
+    def _build_market_data_config(self, base_market_data: object | None):
+        base_market_data = base_market_data or FallbackMarketDataConfig()
+        base_stooq = self._news_attr(base_market_data, "stooq", None) or FallbackStooqConfig()
+        stooq_cls = PackageStooqConfig or FallbackStooqConfig
+        market_data_cls = PackageMarketDataConfig or FallbackMarketDataConfig
+        stooq = stooq_cls(
+            api_key_env=self._get_str(
+                "market_data_stooq_api_key_env",
+                self._news_attr(base_stooq, "api_key_env", "STOOQ_API_KEY"),
+            ),
+            api_key=self._get_str(
+                "market_data_stooq_api_key",
+                self._news_attr(base_stooq, "api_key", ""),
+            ),
+            timeout_seconds=self._get_int(
+                "market_data_stooq_timeout_seconds",
+                self._news_attr(base_stooq, "timeout_seconds", 8),
+            ),
+        )
+        return market_data_cls(stooq=stooq)
 
     def _build_news_config(self, base_news: object | None):
         base_news = base_news or FallbackNewsConfig()
@@ -604,6 +650,7 @@ class NasdaqHotspotReporter(Star):
             f"latest_report_path: {self._output_path()}",
             f"last_sent_date: {self._get_str('last_sent_date', '无')}",
             f"market_data_provider: {self._get_str('market_data_provider', 'news')}",
+            f"market_data_stooq_api_key: {'已配置' if self._get_str('market_data_stooq_api_key') else '未配置'}",
             f"news_enabled: {self._get_bool('news_enabled', True)}",
             f"news_marketaux_enabled: {self._get_bool('news_marketaux_enabled', False)}",
             f"news_marketaux_api_key: {'已配置' if self._get_str('news_marketaux_api_key') else '未配置'}",

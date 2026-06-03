@@ -55,6 +55,13 @@
       "user_agent": "nasdaq-hotspot-agent/0.1 contact@example.com"
     }
   },
+  "market_data": {
+    "stooq": {
+      "api_key_env": "STOOQ_API_KEY",
+      "api_key": "",
+      "timeout_seconds": 8
+    }
+  },
   "score_weights": {
     "index_weight": 0.34,
     "price_move": 0.26,
@@ -97,7 +104,9 @@
     {"ticker": "SOXX", "name": "iShares Semiconductor ETF", "theme_tags": ["半导体", "AI 算力"]},
     {"ticker": "XLK", "name": "Technology Select Sector SPDR Fund", "theme_tags": ["大型科技", "软件"]},
     {"ticker": "IYW", "name": "iShares U.S. Technology ETF", "theme_tags": ["大型科技", "软件"]},
-    {"ticker": "XLY", "name": "Consumer Discretionary Select Sector SPDR Fund", "theme_tags": ["消费科技", "电商消费"]}
+    {"ticker": "XLY", "name": "Consumer Discretionary Select Sector SPDR Fund", "theme_tags": ["消费科技", "电商消费"]},
+    {"ticker": "SPY", "name": "SPDR S&P 500 ETF Trust", "theme_tags": ["市场背景"]},
+    {"ticker": "DIA", "name": "SPDR Dow Jones Industrial Average ETF Trust", "theme_tags": ["市场背景"]}
   ],
   "themes": {
     "AI 算力": {

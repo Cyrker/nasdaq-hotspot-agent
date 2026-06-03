@@ -24,8 +24,24 @@
   "market_data_provider": {
     "description": "市场数据 provider",
     "type": "string",
-    "hint": "news=mock行情+真实新闻/公告；mock=纯模拟数据",
+    "hint": "news=Stooq行情+真实新闻/公告；mock_with_news=mock行情+真实新闻/公告；mock=纯模拟数据",
     "default": "news"
+  },
+  "market_data_stooq_api_key": {
+    "description": "Stooq CSV API Key",
+    "type": "string",
+    "hint": "打开 https://stooq.com/q/d/?s=nvda.us&get_apikey 过验证码获取；留空则行情回退 mock",
+    "default": ""
+  },
+  "market_data_stooq_api_key_env": {
+    "description": "Stooq API Key 环境变量名",
+    "type": "string",
+    "default": "STOOQ_API_KEY"
+  },
+  "market_data_stooq_timeout_seconds": {
+    "description": "Stooq 单 ticker 请求超时秒数",
+    "type": "int",
+    "default": 8
   },
   "news_enabled": {
     "description": "是否启用新闻/公告源聚合",

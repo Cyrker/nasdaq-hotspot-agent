@@ -25,7 +25,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--provider",
         default="news",
-        choices=["mock", "news", "mock_with_news", "enriched"],
+        choices=["mock", "news", "mock_with_news", "enriched", "stooq", "stooq_news"],
         help="Market data provider to use.",
     )
     return parser

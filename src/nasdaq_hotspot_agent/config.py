@@ -63,6 +63,18 @@ class SecEdgarConfig:
 
 
 @dataclass(frozen=True)
+class StooqConfig:
+    api_key_env: str = "STOOQ_API_KEY"
+    api_key: str = ""
+    timeout_seconds: int = 8
+
+
+@dataclass(frozen=True)
+class MarketDataConfig:
+    stooq: StooqConfig = field(default_factory=StooqConfig)
+
+
+@dataclass(frozen=True)
 class NewsConfig:
     enabled: bool = True
     lookback_hours: int = 36
@@ -86,6 +98,7 @@ class AgentConfig:
     etfs: list[EtfMember]
     themes: dict[str, ThemeConfig]
     ai: AiConfig
+    market_data: MarketDataConfig
     news: NewsConfig
 
 
@@ -143,6 +156,8 @@ def load_config(path: str | Path) -> AgentConfig:
     report = data["report"]
     ai_data = data.get("ai", {})
     news_data = data.get("news", {})
+    market_data = data.get("market_data", {})
+    stooq_data = market_data.get("stooq", {})
     marketaux_data = news_data.get("marketaux", {})
     alpha_data = news_data.get("alpha_vantage", {})
     nasdaq_data = news_data.get("nasdaq_rss", {})
@@ -203,6 +218,13 @@ def load_config(path: str | Path) -> AgentConfig:
             max_tokens=_as_int(ai_data.get("max_tokens"), 1200),
             timeout_seconds=_as_int(ai_data.get("timeout_seconds"), 60),
             report_language=str(ai_data.get("report_language", "zh-CN")),
+        ),
+        market_data=MarketDataConfig(
+            stooq=StooqConfig(
+                api_key_env=str(stooq_data.get("api_key_env", "STOOQ_API_KEY")),
+                api_key=str(stooq_data.get("api_key", "")),
+                timeout_seconds=_as_int(stooq_data.get("timeout_seconds"), 8),
+            )
         ),
         news=NewsConfig(
             enabled=_as_bool(news_data.get("enabled"), True),
