@@ -315,7 +315,7 @@ class NewsAggregator:
                 data = self._get_json(
                     f"https://data.sec.gov/submissions/CIK{cik:010d}.json",
                     timeout=config.news.request_timeout_seconds,
-                    headers={"User-Agent": user_agent, "Accept-Encoding": "gzip, deflate"},
+                    headers={"User-Agent": user_agent},
                 )
             except Exception:
                 continue
@@ -367,7 +367,7 @@ class NewsAggregator:
         data = self._get_json(
             "https://www.sec.gov/files/company_tickers.json",
             timeout=timeout,
-            headers={"User-Agent": user_agent, "Accept-Encoding": "gzip, deflate"},
+            headers={"User-Agent": user_agent},
         )
         mapping: dict[str, int] = {}
         for item in data.values() if isinstance(data, dict) else []:
