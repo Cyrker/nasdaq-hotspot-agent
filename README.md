@@ -84,6 +84,8 @@ AstrBot WebUI 配置 > config/watchlist.json 默认配置
 
 如果 AstrBot 报 `cannot import name 'AiConfig' from 'nasdaq_hotspot_agent.config'`，通常是插件更新不完整或旧文件缓存。请先在 AstrBot 插件页重载；如果仍失败，删除 `/AstrBot/data/plugins/nasdaq_hotspot_agent` 后用公开仓库地址重新安装。
 
+如果 AstrBot 报 `'AgentRunResult' object has no attribute 'plain_text'`，也是插件目录半更新导致入口文件和 `src/` 版本不一致。`v0.1.2` 起入口会自动回退，把旧版 Markdown 报告清洗成 QQ 纯文本发送；仍建议删除插件目录后重新安装，保证所有文件版本一致。
+
 ## AI 提供商配置
 
 默认配置位于 `config/watchlist.json`：

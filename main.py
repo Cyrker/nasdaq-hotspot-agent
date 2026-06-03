@@ -177,8 +177,45 @@ class NasdaqHotspotReporter(Star):
         result = agent.run()
         output_path = self._output_path()
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(result.markdown, encoding="utf-8")
-        return result.plain_text
+        markdown = str(getattr(result, "markdown", "") or "")
+        output_path.write_text(markdown, encoding="utf-8")
+        return str(getattr(result, "plain_text", "") or "").strip() or self._markdown_to_qq_text(markdown)
+
+    def _markdown_to_qq_text(self, markdown: str) -> str:
+        lines: list[str] = []
+        for raw_line in markdown.replace("\r\n", "\n").replace("\r", "\n").splitlines():
+            line = raw_line.strip()
+            if not line:
+                lines.append("")
+                continue
+            if set(line) <= {"|", "-", ":", " "}:
+                continue
+            if line.startswith("|") and line.endswith("|"):
+                cells = [
+                    cell.strip().replace("`", "")
+                    for cell in line.strip("|").split("|")
+                    if cell.strip()
+                ]
+                if cells:
+                    lines.append(" / ".join(cells))
+                continue
+            while line.startswith("#"):
+                line = line[1:].strip()
+            if line.startswith(("- ", "* ")):
+                line = line[2:].strip()
+            line = (
+                line.replace("```", "")
+                .replace("`", "")
+                .replace("**", "")
+                .replace("__", "")
+                .replace("|", " / ")
+            )
+            if line:
+                lines.append(line)
+
+        while lines and not lines[-1].strip():
+            lines.pop()
+        return "\n".join(lines).strip() or "热点日报生成完成，但内容为空。"
 
     async def _generate_report(self) -> str:
         return await asyncio.to_thread(self._run_agent_sync)
