@@ -1,0 +1,68 @@
+{
+  "enabled": {
+    "description": "是否启用纳指热点日报插件",
+    "type": "bool",
+    "default": true
+  },
+  "auto_push_enabled": {
+    "description": "是否每天自动推送到已绑定 QQ 群",
+    "type": "bool",
+    "default": false
+  },
+  "daily_report_time": {
+    "description": "每日自动推送时间",
+    "type": "string",
+    "hint": "HH:MM，默认北京时间 06:00，对应美股盘后",
+    "default": "06:00"
+  },
+  "timezone": {
+    "description": "定时任务使用的时区",
+    "type": "string",
+    "hint": "默认 Asia/Shanghai",
+    "default": "Asia/Shanghai"
+  },
+  "admin_qqs": {
+    "description": "允许执行插件管理命令的 QQ 号",
+    "type": "string",
+    "hint": "每行或逗号分隔一个 QQ；AstrBot 全局管理员也会被允许",
+    "default": ""
+  },
+  "target_umos": {
+    "description": "AstrBot 群会话 unified_msg_origin 列表",
+    "type": "string",
+    "hint": "每行一个；推荐在目标 QQ 群内发送 /mh_bind_group 自动写入",
+    "default": ""
+  },
+  "agent_config_path": {
+    "description": "热点 Agent 配置文件路径",
+    "type": "string",
+    "hint": "相对路径会从插件目录解析",
+    "default": "config/watchlist.json"
+  },
+  "latest_report_path": {
+    "description": "最近一次生成的 Markdown 报告保存路径",
+    "type": "string",
+    "hint": "相对路径会从插件目录解析",
+    "default": "reports/astrbot-latest.md"
+  },
+  "max_message_chars": {
+    "description": "单条 QQ 消息最大字符数，超出会自动拆分",
+    "type": "int",
+    "default": 1800
+  },
+  "schedule_check_seconds": {
+    "description": "定时任务检查间隔秒数",
+    "type": "int",
+    "default": 60
+  },
+  "failure_backoff_seconds": {
+    "description": "定时任务失败后的退避秒数",
+    "type": "int",
+    "default": 300
+  },
+  "last_sent_date": {
+    "description": "最近一次自动推送日期，由插件自动维护",
+    "type": "string",
+    "default": ""
+  }
+}

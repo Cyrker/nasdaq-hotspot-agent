@@ -1,0 +1,16 @@
+[project]
+name = "nasdaq-hotspot-agent"
+version = "0.1.0"
+description = "Daily Nasdaq-100 hotspot report agent scaffold"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+nasdaq-hotspot-agent = "nasdaq_hotspot_agent.cli:main"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

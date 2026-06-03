@@ -1,0 +1,90 @@
+{
+  "report": {
+    "title": "纳指权重股热点日报",
+    "timezone": "Asia/Shanghai",
+    "max_themes": 6,
+    "max_stocks_per_theme": 8
+  },
+  "score_weights": {
+    "index_weight": 0.34,
+    "price_move": 0.26,
+    "volume_signal": 0.16,
+    "news_density": 0.14,
+    "theme_breadth": 0.10
+  },
+  "core_universe": [
+    {"ticker": "NVDA", "company": "NVIDIA", "theme_tags": ["AI 算力", "半导体"]},
+    {"ticker": "AAPL", "company": "Apple", "theme_tags": ["大型平台股", "消费科技"]},
+    {"ticker": "MSFT", "company": "Microsoft", "theme_tags": ["大型平台股", "AI 应用", "云计算"]},
+    {"ticker": "AMZN", "company": "Amazon", "theme_tags": ["大型平台股", "云计算", "电商消费"]},
+    {"ticker": "TSLA", "company": "Tesla", "theme_tags": ["电动车", "消费科技"]},
+    {"ticker": "META", "company": "Meta Platforms", "theme_tags": ["大型平台股", "AI 应用", "广告"]},
+    {"ticker": "WMT", "company": "Walmart", "theme_tags": ["电商消费", "零售"]},
+    {"ticker": "GOOGL", "company": "Alphabet Class A", "theme_tags": ["大型平台股", "AI 应用", "广告"]},
+    {"ticker": "GOOG", "company": "Alphabet Class C", "theme_tags": ["大型平台股", "AI 应用", "广告"]},
+    {"ticker": "AVGO", "company": "Broadcom", "theme_tags": ["AI 算力", "半导体"]}
+  ],
+  "extended_universe": [
+    {"ticker": "AMD", "company": "Advanced Micro Devices", "theme_tags": ["AI 算力", "半导体"]},
+    {"ticker": "COST", "company": "Costco", "theme_tags": ["电商消费", "零售"]},
+    {"ticker": "NFLX", "company": "Netflix", "theme_tags": ["流媒体", "大型平台股"]},
+    {"ticker": "ADBE", "company": "Adobe", "theme_tags": ["AI 应用", "软件"]},
+    {"ticker": "CSCO", "company": "Cisco", "theme_tags": ["网络设备", "云计算"]},
+    {"ticker": "TMUS", "company": "T-Mobile US", "theme_tags": ["通信服务"]},
+    {"ticker": "INTU", "company": "Intuit", "theme_tags": ["软件", "AI 应用"]},
+    {"ticker": "AMAT", "company": "Applied Materials", "theme_tags": ["半导体设备", "半导体"]},
+    {"ticker": "ISRG", "company": "Intuitive Surgical", "theme_tags": ["医疗科技"]},
+    {"ticker": "TXN", "company": "Texas Instruments", "theme_tags": ["半导体"]},
+    {"ticker": "PDD", "company": "PDD Holdings", "theme_tags": ["中概股", "电商消费"]},
+    {"ticker": "ARM", "company": "Arm Holdings", "theme_tags": ["AI 算力", "半导体"]},
+    {"ticker": "MU", "company": "Micron Technology", "theme_tags": ["存储芯片", "半导体"]},
+    {"ticker": "PANW", "company": "Palo Alto Networks", "theme_tags": ["网络安全", "软件"]}
+  ],
+  "etfs": [
+    {"ticker": "QQQ", "name": "Invesco QQQ Trust", "theme_tags": ["Nasdaq-100", "大型科技"]},
+    {"ticker": "QQQM", "name": "Invesco NASDAQ 100 ETF", "theme_tags": ["Nasdaq-100", "大型科技"]},
+    {"ticker": "SMH", "name": "VanEck Semiconductor ETF", "theme_tags": ["半导体", "AI 算力"]},
+    {"ticker": "SOXX", "name": "iShares Semiconductor ETF", "theme_tags": ["半导体", "AI 算力"]},
+    {"ticker": "XLK", "name": "Technology Select Sector SPDR Fund", "theme_tags": ["大型科技", "软件"]},
+    {"ticker": "IYW", "name": "iShares U.S. Technology ETF", "theme_tags": ["大型科技", "软件"]},
+    {"ticker": "XLY", "name": "Consumer Discretionary Select Sector SPDR Fund", "theme_tags": ["消费科技", "电商消费"]}
+  ],
+  "themes": {
+    "AI 算力": {
+      "description": "GPU、AI 加速器、网络、数据中心和算力基础设施链条。",
+      "etfs": ["QQQ", "QQQM", "SMH", "SOXX"]
+    },
+    "半导体": {
+      "description": "芯片设计、制造、设备、存储和半导体周期。",
+      "etfs": ["SMH", "SOXX", "QQQ"]
+    },
+    "大型平台股": {
+      "description": "美股大型科技平台，包括云、广告、生态系统和 AI 产品化。",
+      "etfs": ["QQQ", "QQQM", "XLK", "IYW"]
+    },
+    "AI 应用": {
+      "description": "AI 在软件、办公、广告、内容和企业服务中的落地。",
+      "etfs": ["QQQ", "QQQM", "XLK", "IYW"]
+    },
+    "云计算": {
+      "description": "云平台、企业基础设施和云资本开支。",
+      "etfs": ["QQQ", "QQQM", "XLK"]
+    },
+    "电商消费": {
+      "description": "电商、零售、会员制消费和线上消费平台。",
+      "etfs": ["QQQ", "QQQM", "XLY"]
+    },
+    "电动车": {
+      "description": "电动车销量、价格策略、自动驾驶和能源业务。",
+      "etfs": ["QQQ", "QQQM", "XLY"]
+    },
+    "网络安全": {
+      "description": "企业安全支出、云安全和身份安全。",
+      "etfs": ["QQQ", "QQQM", "IYW"]
+    },
+    "中概股": {
+      "description": "在美上市中国互联网和消费平台。",
+      "etfs": ["QQQ", "QQQM"]
+    }
+  }
+}

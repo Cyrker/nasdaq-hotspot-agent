@@ -1,0 +1,6 @@
+name: nasdaq_hotspot_agent
+desc: 纳指权重股热点日报 AstrBot QQ 推送插件
+help: 在目标 QQ 群发送 /mh_bind_group 绑定群；使用 /mh_now 立即生成，/mh_push_now 立即推送。
+version: v0.1.0
+author: Cyrker
+repo: "https://github.com/Cyrker/nasdaq-hotspot-agent"
