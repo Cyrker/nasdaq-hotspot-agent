@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import suppress
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 import sys
 from typing import Any
@@ -27,6 +27,27 @@ try:
 except ImportError:
     PackageAiConfig = None
 
+try:
+    from nasdaq_hotspot_agent.config import (
+        AlphaVantageNewsConfig as PackageAlphaVantageNewsConfig,
+        MarketauxConfig as PackageMarketauxConfig,
+        NasdaqRssConfig as PackageNasdaqRssConfig,
+        NewsConfig as PackageNewsConfig,
+        SecEdgarConfig as PackageSecEdgarConfig,
+    )
+except ImportError:
+    PackageAlphaVantageNewsConfig = None
+    PackageMarketauxConfig = None
+    PackageNasdaqRssConfig = None
+    PackageNewsConfig = None
+    PackageSecEdgarConfig = None
+
+try:
+    from nasdaq_hotspot_agent.providers.factory import create_market_data_provider
+except ImportError:
+    def create_market_data_provider(name: str):
+        return MockMarketDataProvider()
+
 
 @dataclass(frozen=True)
 class FallbackAiConfig:
@@ -40,6 +61,55 @@ class FallbackAiConfig:
     max_tokens: int = 1200
     timeout_seconds: int = 60
     report_language: str = "zh-CN"
+
+
+@dataclass(frozen=True)
+class FallbackMarketauxConfig:
+    enabled: bool = False
+    api_key_env: str = "MARKETAUX_API_KEY"
+    api_key: str = ""
+    symbol_batch_size: int = 8
+    articles_per_request: int = 3
+
+
+@dataclass(frozen=True)
+class FallbackAlphaVantageNewsConfig:
+    enabled: bool = False
+    api_key_env: str = "ALPHA_VANTAGE_API_KEY"
+    api_key: str = ""
+    ticker_batch_size: int = 6
+    limit_per_request: int = 20
+    topics: list[str] | None = None
+
+
+@dataclass(frozen=True)
+class FallbackNasdaqRssConfig:
+    enabled: bool = True
+    feed_urls: list[str] | None = None
+    symbol_feed_limit: int = 0
+
+
+@dataclass(frozen=True)
+class FallbackSecEdgarConfig:
+    enabled: bool = True
+    forms: list[str] | None = None
+    max_symbols: int = 12
+    user_agent: str = "nasdaq-hotspot-agent/0.1 contact@example.com"
+
+
+@dataclass(frozen=True)
+class FallbackNewsConfig:
+    enabled: bool = True
+    lookback_hours: int = 36
+    max_articles_per_run: int = 40
+    include_urls: bool = True
+    request_timeout_seconds: int = 12
+    marketaux: FallbackMarketauxConfig = field(default_factory=FallbackMarketauxConfig)
+    alpha_vantage: FallbackAlphaVantageNewsConfig = field(
+        default_factory=FallbackAlphaVantageNewsConfig
+    )
+    nasdaq_rss: FallbackNasdaqRssConfig = field(default_factory=FallbackNasdaqRssConfig)
+    sec_edgar: FallbackSecEdgarConfig = field(default_factory=FallbackSecEdgarConfig)
 
 
 class NasdaqHotspotReporter(Star):
@@ -61,6 +131,12 @@ class NasdaqHotspotReporter(Star):
     def _get_int(self, key: str, default: int) -> int:
         try:
             return max(1, int(self.config.get(key, default)))
+        except (TypeError, ValueError):
+            return default
+
+    def _get_nonnegative_int(self, key: str, default: int) -> int:
+        try:
+            return max(0, int(self.config.get(key, default)))
         except (TypeError, ValueError):
             return default
 
@@ -157,10 +233,12 @@ class NasdaqHotspotReporter(Star):
             timeout_seconds=self._get_int("ai_timeout_seconds", self._ai_attr(base_ai, "timeout_seconds", 60)),
             report_language=self._get_str("ai_report_language", self._ai_attr(base_ai, "report_language", "zh-CN")),
         )
+        news_config = self._build_news_config(getattr(base_config, "news", None))
         try:
-            return replace(base_config, ai=ai_config)
+            return replace(base_config, ai=ai_config, news=news_config)
         except (TypeError, ValueError):
             object.__setattr__(base_config, "ai", ai_config)
+            object.__setattr__(base_config, "news", news_config)
             return base_config
 
     def _ai_attr(self, base_ai: object, key: str, default: Any) -> Any:
@@ -168,11 +246,157 @@ class NasdaqHotspotReporter(Star):
             return base_ai.get(key, default)
         return getattr(base_ai, key, default)
 
+    def _build_news_config(self, base_news: object | None):
+        base_news = base_news or FallbackNewsConfig()
+        marketaux = self._build_marketaux_config(self._news_attr(base_news, "marketaux", None))
+        alpha_vantage = self._build_alpha_config(
+            self._news_attr(base_news, "alpha_vantage", None)
+        )
+        nasdaq_rss = self._build_nasdaq_rss_config(
+            self._news_attr(base_news, "nasdaq_rss", None)
+        )
+        sec_edgar = self._build_sec_config(self._news_attr(base_news, "sec_edgar", None))
+        news_cls = PackageNewsConfig or FallbackNewsConfig
+        return news_cls(
+            enabled=self._get_bool("news_enabled", self._news_attr(base_news, "enabled", True)),
+            lookback_hours=self._get_int(
+                "news_lookback_hours", self._news_attr(base_news, "lookback_hours", 36)
+            ),
+            max_articles_per_run=self._get_int(
+                "news_max_articles_per_run",
+                self._news_attr(base_news, "max_articles_per_run", 40),
+            ),
+            include_urls=self._get_bool(
+                "news_include_urls", self._news_attr(base_news, "include_urls", True)
+            ),
+            request_timeout_seconds=self._get_int(
+                "news_request_timeout_seconds",
+                self._news_attr(base_news, "request_timeout_seconds", 12),
+            ),
+            marketaux=marketaux,
+            alpha_vantage=alpha_vantage,
+            nasdaq_rss=nasdaq_rss,
+            sec_edgar=sec_edgar,
+        )
+
+    def _build_marketaux_config(self, base_config: object | None):
+        base_config = base_config or FallbackMarketauxConfig()
+        cls = PackageMarketauxConfig or FallbackMarketauxConfig
+        return cls(
+            enabled=self._get_bool(
+                "news_marketaux_enabled", self._news_attr(base_config, "enabled", False)
+            ),
+            api_key_env=self._get_str(
+                "news_marketaux_api_key_env",
+                self._news_attr(base_config, "api_key_env", "MARKETAUX_API_KEY"),
+            ),
+            api_key=self._get_str(
+                "news_marketaux_api_key", self._news_attr(base_config, "api_key", "")
+            ),
+            symbol_batch_size=self._get_int(
+                "news_marketaux_symbol_batch_size",
+                self._news_attr(base_config, "symbol_batch_size", 8),
+            ),
+            articles_per_request=self._get_int(
+                "news_marketaux_articles_per_request",
+                self._news_attr(base_config, "articles_per_request", 3),
+            ),
+        )
+
+    def _build_alpha_config(self, base_config: object | None):
+        base_config = base_config or FallbackAlphaVantageNewsConfig()
+        cls = PackageAlphaVantageNewsConfig or FallbackAlphaVantageNewsConfig
+        return cls(
+            enabled=self._get_bool(
+                "news_alpha_vantage_enabled",
+                self._news_attr(base_config, "enabled", False),
+            ),
+            api_key_env=self._get_str(
+                "news_alpha_vantage_api_key_env",
+                self._news_attr(base_config, "api_key_env", "ALPHA_VANTAGE_API_KEY"),
+            ),
+            api_key=self._get_str(
+                "news_alpha_vantage_api_key",
+                self._news_attr(base_config, "api_key", ""),
+            ),
+            ticker_batch_size=self._get_int(
+                "news_alpha_vantage_ticker_batch_size",
+                self._news_attr(base_config, "ticker_batch_size", 6),
+            ),
+            limit_per_request=self._get_int(
+                "news_alpha_vantage_limit_per_request",
+                self._news_attr(base_config, "limit_per_request", 20),
+            ),
+            topics=self._normalize_list(
+                self.config.get(
+                    "news_alpha_vantage_topics",
+                    self._news_attr(
+                        base_config,
+                        "topics",
+                        ["technology", "earnings", "financial_markets"],
+                    ),
+                )
+            ),
+        )
+
+    def _build_nasdaq_rss_config(self, base_config: object | None):
+        base_config = base_config or FallbackNasdaqRssConfig()
+        cls = PackageNasdaqRssConfig or FallbackNasdaqRssConfig
+        raw_feed_urls = self.config.get("news_nasdaq_rss_feed_urls", None)
+        feed_urls = (
+            self._normalize_list(raw_feed_urls)
+            if raw_feed_urls
+            else self._normalize_list(self._news_attr(base_config, "feed_urls", []))
+        )
+        return cls(
+            enabled=self._get_bool(
+                "news_nasdaq_rss_enabled", self._news_attr(base_config, "enabled", True)
+            ),
+            feed_urls=feed_urls,
+            symbol_feed_limit=self._get_nonnegative_int(
+                "news_nasdaq_rss_symbol_feed_limit",
+                self._news_attr(base_config, "symbol_feed_limit", 0),
+            ),
+        )
+
+    def _build_sec_config(self, base_config: object | None):
+        base_config = base_config or FallbackSecEdgarConfig()
+        cls = PackageSecEdgarConfig or FallbackSecEdgarConfig
+        return cls(
+            enabled=self._get_bool(
+                "sec_edgar_enabled", self._news_attr(base_config, "enabled", True)
+            ),
+            forms=self._normalize_list(
+                self.config.get(
+                    "sec_edgar_forms",
+                    self._news_attr(base_config, "forms", ["8-K", "10-Q", "10-K", "S-1"]),
+                )
+            ),
+            max_symbols=self._get_int(
+                "sec_edgar_max_symbols", self._news_attr(base_config, "max_symbols", 12)
+            ),
+            user_agent=self._get_str(
+                "sec_edgar_user_agent",
+                self._news_attr(
+                    base_config,
+                    "user_agent",
+                    "nasdaq-hotspot-agent/0.1 contact@example.com",
+                ),
+            ),
+        )
+
+    def _news_attr(self, base_config: object, key: str, default: Any) -> Any:
+        if isinstance(base_config, dict):
+            return base_config.get(key, default)
+        return getattr(base_config, key, default)
+
     def _run_agent_sync(self) -> str:
         agent_config = self._load_agent_config()
         agent = NasdaqHotspotAgent(
             config=agent_config,
-            provider=MockMarketDataProvider(),
+            provider=create_market_data_provider(
+                self._get_str("market_data_provider", "news")
+            ),
         )
         result = agent.run()
         output_path = self._output_path()
@@ -379,6 +603,14 @@ class NasdaqHotspotReporter(Star):
             f"agent_config_path: {self._config_path()}",
             f"latest_report_path: {self._output_path()}",
             f"last_sent_date: {self._get_str('last_sent_date', '无')}",
+            f"market_data_provider: {self._get_str('market_data_provider', 'news')}",
+            f"news_enabled: {self._get_bool('news_enabled', True)}",
+            f"news_marketaux_enabled: {self._get_bool('news_marketaux_enabled', False)}",
+            f"news_marketaux_api_key: {'已配置' if self._get_str('news_marketaux_api_key') else '未配置'}",
+            f"news_alpha_vantage_enabled: {self._get_bool('news_alpha_vantage_enabled', False)}",
+            f"news_alpha_vantage_api_key: {'已配置' if self._get_str('news_alpha_vantage_api_key') else '未配置'}",
+            f"news_nasdaq_rss_enabled: {self._get_bool('news_nasdaq_rss_enabled', True)}",
+            f"sec_edgar_enabled: {self._get_bool('sec_edgar_enabled', True)}",
         ]
         yield event.plain_result("\n".join(lines))
 

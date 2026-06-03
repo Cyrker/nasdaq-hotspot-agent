@@ -17,7 +17,7 @@ def generate_markdown_report(
         f"# {config.title}",
         "",
         f"- 数据截止：{date_text}",
-        "- 数据状态：MVP 模拟数据，后续需接入真实行情和新闻源",
+        "- 数据状态：行情仍为 MVP mock；新闻/公告按配置实时拉取",
         f"- AI 精炼：{build_ai_status(config, ai_summary, ai_error)}",
         "",
         "## 精炼摘要",
@@ -36,6 +36,13 @@ def generate_markdown_report(
         lines.append("## 宏观和市场环境")
         lines.append("")
         for note in snapshot.macro_notes:
+            lines.append(f"- {note}")
+
+    if snapshot.provider_notes:
+        lines.append("")
+        lines.append("## 数据源状态")
+        lines.append("")
+        for note in snapshot.provider_notes:
             lines.append(f"- {note}")
 
     lines.extend(["", "## 权重股贡献榜", ""])
@@ -79,6 +86,17 @@ def generate_markdown_report(
             lines.append(f"  - {catalyst}")
         lines.append("")
 
+    if snapshot.news_items:
+        lines.extend(["", "## 重要来源证据", ""])
+        for idx, item in enumerate(snapshot.news_items[:10], start=1):
+            symbols = ", ".join(item.symbols) or "未匹配"
+            url_text = f" - {item.url}" if should_include_urls(config) and item.url else ""
+            lines.append(
+                f"{idx}. [{item.confidence}] {item.title} "
+                f"({item.provider}, {item.source}, symbols: {symbols}){url_text}"
+            )
+        lines.append("")
+
     lines.extend(
         [
             "## 明日关注",
@@ -112,7 +130,7 @@ def generate_plain_text_report(
         config.title,
         "",
         f"数据截止：{date_text}",
-        "数据状态：MVP 模拟数据，后续需接入真实行情和新闻源",
+        "数据状态：行情仍为 MVP mock；新闻/公告按配置实时拉取",
         f"AI 精炼：{build_ai_status(config, ai_summary, ai_error)}",
         "",
         "精炼摘要",
@@ -127,6 +145,11 @@ def generate_plain_text_report(
     if snapshot.macro_notes:
         lines.extend(["", "宏观和市场环境"])
         for idx, note in enumerate(snapshot.macro_notes, start=1):
+            lines.append(f"{idx}. {note}")
+
+    if snapshot.provider_notes:
+        lines.extend(["", "数据源状态"])
+        for idx, note in enumerate(snapshot.provider_notes, start=1):
             lines.append(f"{idx}. {note}")
 
     lines.extend(["", "权重股热点榜"])
@@ -156,6 +179,17 @@ def generate_plain_text_report(
         )
         for catalyst_idx, catalyst in enumerate(theme.catalysts, start=1):
             lines.append(f"{catalyst_idx}. {catalyst}")
+        lines.append("")
+
+    if snapshot.news_items:
+        lines.extend(["重要来源证据"])
+        for idx, item in enumerate(snapshot.news_items[:8], start=1):
+            symbols = "、".join(item.symbols) or "未匹配"
+            lines.append(
+                f"{idx}. {item.title}（{item.provider}，{item.source}，依据：{item.confidence}，相关：{symbols}）"
+            )
+            if should_include_urls(config) and item.url:
+                lines.append(item.url)
         lines.append("")
 
     lines.extend(
@@ -204,6 +238,11 @@ def build_ai_status(
     if ai_summary:
         return f"已启用，provider={ai_config.provider}, model={ai_config.model}"
     return f"失败，已回退模板摘要：{ai_error or '未知错误'}"
+
+
+def should_include_urls(config: AgentConfig) -> bool:
+    news_config = getattr(config, "news", None)
+    return bool(getattr(news_config, "include_urls", True))
 
 
 def sanitize_plain_text(text: str) -> str:

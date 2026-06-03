@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .config import load_config
 from .pipeline import NasdaqHotspotAgent
-from .providers.mock import MockMarketDataProvider
+from .providers.factory import create_market_data_provider
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -24,8 +24,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--provider",
-        default="mock",
-        choices=["mock"],
+        default="news",
+        choices=["mock", "news", "mock_with_news", "enriched"],
         help="Market data provider to use.",
     )
     return parser
@@ -34,7 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = build_parser().parse_args()
     config = load_config(args.config)
-    provider = MockMarketDataProvider()
+    provider = create_market_data_provider(args.provider)
     agent = NasdaqHotspotAgent(config=config, provider=provider)
     result = agent.run()
 

@@ -17,6 +17,44 @@
     "timeout_seconds": 60,
     "report_language": "zh-CN"
   },
+  "news": {
+    "enabled": true,
+    "lookback_hours": 36,
+    "max_articles_per_run": 40,
+    "include_urls": true,
+    "request_timeout_seconds": 12,
+    "marketaux": {
+      "enabled": false,
+      "api_key_env": "MARKETAUX_API_KEY",
+      "api_key": "",
+      "symbol_batch_size": 8,
+      "articles_per_request": 3
+    },
+    "alpha_vantage": {
+      "enabled": false,
+      "api_key_env": "ALPHA_VANTAGE_API_KEY",
+      "api_key": "",
+      "ticker_batch_size": 6,
+      "limit_per_request": 20,
+      "topics": ["technology", "earnings", "financial_markets"]
+    },
+    "nasdaq_rss": {
+      "enabled": true,
+      "feed_urls": [
+        "https://www.nasdaq.com/feed/rssoutbound?category=Artificial+Intelligence",
+        "https://www.nasdaq.com/feed/rssoutbound?category=Technology",
+        "https://www.nasdaq.com/feed/rssoutbound?category=Stocks",
+        "https://www.nasdaq.com/feed/rssoutbound?category=Earnings"
+      ],
+      "symbol_feed_limit": 0
+    },
+    "sec_edgar": {
+      "enabled": true,
+      "forms": ["8-K", "10-Q", "10-K", "S-1"],
+      "max_symbols": 12,
+      "user_agent": "nasdaq-hotspot-agent/0.1 contact@example.com"
+    }
+  },
   "score_weights": {
     "index_weight": 0.34,
     "price_move": 0.26,

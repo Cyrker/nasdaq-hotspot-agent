@@ -100,7 +100,8 @@ class OpenAICompatibleRefiner(ReportRefiner):
             "中文纳指权重股热点日报。不要给买入、卖出、目标价或仓位建议。"
             "必须区分事实、市场关注点和风险。输出要精炼，适合 QQ 群阅读。"
             "不要使用 Markdown 表格、标题符号、反引号、加粗、链接格式或富文本标记；"
-            "只使用纯文本、换行和编号。"
+            "只使用纯文本、换行和编号。新闻 API 的 title/summary/snippet 只能作为线索；"
+            "SEC filing 和公司官方材料可信度更高。输出结论时要体现依据强度。"
         )
 
     def _user_payload(
@@ -140,11 +141,32 @@ class OpenAICompatibleRefiner(ReportRefiner):
                 }
                 for theme in themes
             ],
+            "evidence": [
+                {
+                    "provider": item.provider,
+                    "source": item.source,
+                    "source_type": item.source_type,
+                    "confidence": item.confidence,
+                    "full_text_available": item.full_text_available,
+                    "title": item.title,
+                    "summary": item.summary,
+                    "url": item.url,
+                    "published_at": item.published_at.isoformat()
+                    if item.published_at
+                    else None,
+                    "symbols": item.symbols,
+                    "topics": item.topics,
+                    "sentiment": item.sentiment,
+                }
+                for item in snapshot.news_items[:30]
+            ],
+            "provider_notes": snapshot.provider_notes,
         }
         return (
             "请基于以下 JSON 生成一个精炼版日报，格式固定为：\n"
             "1. 一句话总结\n"
-            "2. 3-5 个热点主题，每个主题包含：核心逻辑、相关个股、相关 ETF、风险\n"
-            "3. 明日关注\n\n"
+            "2. 3-5 个热点主题，每个主题包含：核心逻辑、相关个股、相关 ETF、依据强度、风险\n"
+            "3. 重要来源，列出 3-6 个标题或官方公告 URL\n"
+            "4. 明日关注\n\n"
             f"{json.dumps(data, ensure_ascii=False, indent=2)}"
         )

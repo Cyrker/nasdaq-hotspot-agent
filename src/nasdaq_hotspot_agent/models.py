@@ -42,12 +42,30 @@ class EtfSnapshot:
 
 
 @dataclass(frozen=True)
+class NewsArticle:
+    provider: str
+    title: str
+    summary: str
+    url: str
+    source: str
+    published_at: datetime | None
+    symbols: list[str]
+    topics: list[str] = field(default_factory=list)
+    sentiment: float | None = None
+    source_type: str = "news"
+    confidence: str = "medium"
+    full_text_available: bool = False
+
+
+@dataclass(frozen=True)
 class MarketSnapshot:
     as_of: datetime
     index_changes: dict[str, float]
     stocks: list[StockSnapshot]
     etfs: list[EtfSnapshot]
     macro_notes: list[str] = field(default_factory=list)
+    news_items: list[NewsArticle] = field(default_factory=list)
+    provider_notes: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

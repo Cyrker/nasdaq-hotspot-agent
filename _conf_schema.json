@@ -21,6 +21,133 @@
     "hint": "默认 Asia/Shanghai",
     "default": "Asia/Shanghai"
   },
+  "market_data_provider": {
+    "description": "市场数据 provider",
+    "type": "string",
+    "hint": "news=mock行情+真实新闻/公告；mock=纯模拟数据",
+    "default": "news"
+  },
+  "news_enabled": {
+    "description": "是否启用新闻/公告源聚合",
+    "type": "bool",
+    "default": true
+  },
+  "news_lookback_hours": {
+    "description": "新闻回看小时数",
+    "type": "int",
+    "default": 36
+  },
+  "news_max_articles_per_run": {
+    "description": "单次最多保留新闻/公告数量",
+    "type": "int",
+    "default": 40
+  },
+  "news_include_urls": {
+    "description": "日报是否包含来源 URL",
+    "type": "bool",
+    "default": true
+  },
+  "news_request_timeout_seconds": {
+    "description": "新闻源请求超时秒数",
+    "type": "int",
+    "default": 12
+  },
+  "news_marketaux_enabled": {
+    "description": "是否启用 Marketaux 新闻 API",
+    "type": "bool",
+    "default": false
+  },
+  "news_marketaux_api_key": {
+    "description": "Marketaux API Key",
+    "type": "string",
+    "hint": "可在 https://www.marketaux.com/ 注册；免费层适合新闻线索",
+    "default": ""
+  },
+  "news_marketaux_api_key_env": {
+    "description": "Marketaux API Key 环境变量名",
+    "type": "string",
+    "default": "MARKETAUX_API_KEY"
+  },
+  "news_marketaux_symbol_batch_size": {
+    "description": "Marketaux 每次请求合并的股票数",
+    "type": "int",
+    "default": 8
+  },
+  "news_marketaux_articles_per_request": {
+    "description": "Marketaux 每次请求文章数，免费层建议 3",
+    "type": "int",
+    "default": 3
+  },
+  "news_alpha_vantage_enabled": {
+    "description": "是否启用 Alpha Vantage NEWS_SENTIMENT",
+    "type": "bool",
+    "default": false
+  },
+  "news_alpha_vantage_api_key": {
+    "description": "Alpha Vantage API Key",
+    "type": "string",
+    "hint": "可在 https://www.alphavantage.co/support/#api-key 免费申请",
+    "default": ""
+  },
+  "news_alpha_vantage_api_key_env": {
+    "description": "Alpha Vantage API Key 环境变量名",
+    "type": "string",
+    "default": "ALPHA_VANTAGE_API_KEY"
+  },
+  "news_alpha_vantage_ticker_batch_size": {
+    "description": "Alpha Vantage 每次请求合并的股票数",
+    "type": "int",
+    "default": 6
+  },
+  "news_alpha_vantage_limit_per_request": {
+    "description": "Alpha Vantage 每次请求新闻数",
+    "type": "int",
+    "default": 20
+  },
+  "news_alpha_vantage_topics": {
+    "description": "Alpha Vantage topics",
+    "type": "string",
+    "hint": "每行或逗号分隔，例如 technology, earnings, financial_markets",
+    "default": "technology\nearnings\nfinancial_markets"
+  },
+  "news_nasdaq_rss_enabled": {
+    "description": "是否启用 Nasdaq RSS",
+    "type": "bool",
+    "default": true
+  },
+  "news_nasdaq_rss_feed_urls": {
+    "description": "Nasdaq RSS feed URL 列表",
+    "type": "string",
+    "hint": "每行一个；留空时使用 config/watchlist.json 默认值",
+    "default": ""
+  },
+  "news_nasdaq_rss_symbol_feed_limit": {
+    "description": "额外拉取前几个核心股票的 Nasdaq symbol RSS",
+    "type": "int",
+    "default": 0
+  },
+  "sec_edgar_enabled": {
+    "description": "是否启用 SEC EDGAR 官方公告",
+    "type": "bool",
+    "default": true
+  },
+  "sec_edgar_forms": {
+    "description": "关注的 SEC 表单",
+    "type": "string",
+    "hint": "每行或逗号分隔，例如 8-K, 10-Q, 10-K, S-1",
+    "default": "8-K\n10-Q\n10-K\nS-1"
+  },
+  "sec_edgar_max_symbols": {
+    "description": "SEC 单次最多检查的股票数量",
+    "type": "int",
+    "default": 12
+  },
+  "sec_edgar_user_agent": {
+    "description": "SEC 请求 User-Agent",
+    "type": "string",
+    "hint": "SEC 建议包含应用名和联系邮箱，例如 nasdaq-hotspot-agent/0.1 you@example.com",
+    "default": "nasdaq-hotspot-agent/0.1 contact@example.com"
+  },
   "ai_enabled": {
     "description": "是否启用 AI 精炼摘要",
     "type": "bool",
